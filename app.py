@@ -1,62 +1,91 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox
+import PySimpleGUI as sg
 import pandas as pd
 import os
 
-def seleccionar_csv():
-    ruta = filedialog.askopenfilename(
-        title="Seleccionar archivo CSV", 
-        filetypes=[("Archivos CSV", "*.csv"), ("Todos", "*.*")])
-    if ruta:
-        entrada_csv.set(ruta)
+# Tema visual
+sg.theme("DarkBlue14")
 
-def seleccionar_carpeta():
-    ruta = filedialog.askdirectory(title="Seleccionar carpeta de destino")
-    if ruta:
-        entrada_carpeta.set(ruta)
+layout = [
 
-def convertir():
-    csv = entrada_csv.get().strip()
-    carpeta = entrada_carpeta.get().strip()
+    [sg.Text(
+        "Conversor CSV a Excel",
+        font=("Segoe UI", 16, "bold"),
+        justification="center",
+        expand_x=True
+    )],
 
-    if not csv or not carpeta:
-        messagebox.showerror("Error", "Por favor, selecciona un archivo CSV y una carpeta de destino.")
-        return
+    [sg.HorizontalSeparator()],
+
+    [
+        sg.Text("Archivo CSV:",font=("Segoe UI", 11), size=(18, 1), justification="right"),
+        
+        sg.Input(
+            key="-CSV-",
+            expand_x=True
+        ),
+
+        sg.FileBrowse(
+            "Seleccionar",
+            file_types=(("Archivos CSV", "*.csv"), ("Todos", "*.*"))
+        )
+    ],
+
+    [
+        sg.Text("Carpeta destino:",font=("Segoe UI", 11), size=(18, 1), justification="right"),
+
+        sg.Input(
+            key="-CARPETA-",
+            expand_x=True
+        ),
+
+        sg.FolderBrowse("Seleccionar")
+    ],
+
+    [sg.Push(),
+
+     sg.Button(
+            "Convertir a Excel",
+            key="-CONVERTIR-",
+            size=(20, 1),
+            font=("Segoe UI", 11, "bold"),
+            button_color=("white", "#4F46E5"),
+            border_width=0,
+            mouseover_colors=("#FFFFFF", "#6366F1")
+        ),
+
+     sg.Push()]
+]
+
+ventana = sg.Window(
+    "CSV to Excel",
+    layout,
+    size=(700, 220),
+    resizable=False,
+    margins=(20, 20)
+)
+
+while True:
+    evento, valores = ventana.read()
     
-    try:
-        os.makedirs(carpeta, exist_ok=True)
-        df = pd.read_csv(csv)
-        nombre = os.path.splitext(os.path.basename(csv))[0]
-        destino = os.path.join(carpeta, f"{nombre}.xlsx")
-        df.to_excel(destino, index=False)
-        lbl_estado.config(text=f"Archivo convertido exitosamente: {destino}", fg="green")
-    except Exception as e:
-        messagebox.showerror("Error", f"Ocurrió un error al convertir el archivo: {e}")
-        lbl_estado.config(text="Error al convertir el archivo.", fg="red")
+    if evento in (None, "Cancelar"):
+        break
+    
+    if evento == "-CONVERTIR-":
+        csv_path = valores["-CSV-"].strip()
+        carpeta = valores["-CARPETA-"].strip()
+        
+        if not csv_path or not carpeta:
+            sg.PopupOK("Por favor, selecciona un archivo CSV y una carpeta de destino.", title="Error")
+            continue
+        
+        try:
+            os.makedirs(carpeta, exist_ok=True)
+            df = pd.read_csv(csv_path)
+            nombre = os.path.splitext(os.path.basename(csv_path))[0]
+            destino = os.path.join(carpeta, f"{nombre}.xlsx")
+            df.to_excel(destino, index=False)
+            sg.PopupOK("Archivo convertido correctamente!", title="Éxito")
+        except Exception as e:
+            sg.PopupOK(f"Ocurrió un error al convertir el archivo:\n{e}", title="Error")
 
-###
-# Configuración de la ventana principal
-ventana = tk.Tk()
-ventana.title("CSV to Excel")
-ventana.geometry("500x240")
-ventana.resizable(False, False)
-
-entrada_csv = tk.StringVar()
-entrada_carpeta = tk.StringVar()
-
-pad = {"padx": 16, "pady": 6}
-
-tk.Label(ventana, text="Archivo CSV:").grid(row=0, column=0, sticky="e", **pad)
-tk.Entry(ventana, textvariable=entrada_csv, width=40).grid(row=0, column=1, padx=16, pady=6)
-tk.Button(ventana, text="Seleccionar", command=seleccionar_csv).grid(row=0, column=2, padx=16, pady=6)
-
-tk.Label(ventana, text="Carpeta de destino:").grid(row=1, column=0, sticky="e", **pad)
-tk.Entry(ventana, textvariable=entrada_carpeta, width=40).grid(row=1, column=1, padx=16, pady=6)
-tk.Button(ventana, text="Seleccionar", command=seleccionar_carpeta).grid(row=1, column=2, padx=16, pady=6)
-
-tk.Button(ventana, text="Convertir", command=convertir, bg="#534AB7", fg="white", padx=16, pady=6).grid(row=2, column=1, pady=10)
-
-lbl_estado = tk.Label(ventana, text="", font=("", 10))
-lbl_estado.grid(row=3, column=0, columnspan=3, pady=10)
-
-ventana.mainloop()
+ventana.close()
